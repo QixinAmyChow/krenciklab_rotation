@@ -50,3 +50,35 @@ def convert(lif_path, out_dir=None, skip_snapshots=True, channel=0):
         outputs.append(out_path)
 
     return outputs
+
+
+def join_tifs(inputs, output):
+    """Concatenate multiple TIFF timeseries into one along the time axis.
+
+    Args:
+        inputs: list of TIFF file paths to join in order.
+        output: output TIFF path.
+
+    Returns:
+        Path to the written TIFF.
+
+    Example:
+        from aqua2kit import join_tifs
+        join_tifs(["rep2-1.tif", "rep2-2.tif"], "rep2_joined.tif")
+    """
+    import tifffile
+    import numpy as np
+
+    parts = []
+    for p in inputs:
+        arr = tifffile.imread(str(p))
+        if arr.ndim == 2:
+            arr = arr[np.newaxis]  # single frame → (1, Y, X)
+        parts.append(arr)
+        print(f"  loaded {Path(p).name}  ({arr.shape[0]} frames)")
+
+    joined = np.concatenate(parts, axis=0)
+    output = Path(output)
+    tifffile.imwrite(str(output), joined)
+    print(f"Joined: {joined.shape[0]} frames → {output.name}")
+    return output

@@ -34,6 +34,21 @@ def cmd_quantify(args):
     print(cond_df[["condition", "n_replicates", "n_events mean", "n_events sem"]].to_string(index=False))
 
 
+def cmd_join_tif(args):
+    from .lif_io import join_tifs
+    from pathlib import Path
+
+    inputs = args.input
+    if args.output:
+        out = args.output
+    else:
+        # default: place next to first input, named after stem of first file + "_joined"
+        first = Path(inputs[0])
+        out = str(first.parent / (first.stem + "_joined.tif"))
+
+    join_tifs(inputs, out)
+
+
 def cmd_sample_template(args):
     template = [
         {
@@ -96,6 +111,13 @@ def main():
     p_q.add_argument("--channel", type=int, default=1,
                      help="AQuA2 channel number (default: 1)")
     p_q.set_defaults(func=cmd_quantify)
+
+    # ── join-tif ─────────────────────────────────────────────────────────────
+    p_j = sub.add_parser("join-tif", help="Concatenate TIFF timeseries along the time axis")
+    p_j.add_argument("input", nargs="+", help="TIFF files to join in order")
+    p_j.add_argument("--output", "-o", default=None,
+                     help="Output TIFF path (default: <first_stem>_joined.tif next to first input)")
+    p_j.set_defaults(func=cmd_join_tif)
 
     # ── template ─────────────────────────────────────────────────────────────
     p_t = sub.add_parser("template",
