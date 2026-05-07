@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "aqua2kit"
+version = "0.1.0"
+description = "Ca²⁺ imaging tools: LIF→TIFF conversion and AQuA2 quantification"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "scipy",
+    "tifffile",
+    "readlif",
+    "openpyxl",
+    "python-pptx",
+]
+
+[project.scripts]
+aqua2kit = "aqua2kit.cli:main"
