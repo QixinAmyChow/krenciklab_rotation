@@ -49,9 +49,11 @@ for k = 1:numel(entries)
 
     fprintf('  Building overlay (%d events)...\n', numel(evt1));
     ov1_img = plt.regionMapWithData(evt1, datOrg1, 0.5, []);
+    % Add per-frame event index labels (visible only when event is active).
+    ov1_img = plt.addLabels(ov1_img, evt1);
     [H, W, ~, nFr] = size(ov1_img);
 
-    vw = VideoWriter(avi_path, 'Motion JPEG AVI');
+    vw = VideoWriter(avi_path, 'Uncompressed AVI');
     vw.FrameRate = fps;
     open(vw);
     cleanupVw = onCleanup(@() close(vw));
