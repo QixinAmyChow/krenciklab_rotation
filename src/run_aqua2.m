@@ -1,17 +1,14 @@
-function run_aqua2(pIn, pOut, lif_path)
+function run_aqua2(pIn, pOut)
 %RUN_AQUA2  Batch AQuA2 Ca2+ event detection on motion-corrected TIFFs.
 %
 %   run_aqua2(pIn, pOut)
-%   run_aqua2(pIn, pOut, lif_path)
 %
-%   pIn      - input TIFF directory (NoRMCorre-corrected)
-%   pOut     - output directory; one *_results subfolder is created per file
-%   lif_path - (optional) path to source .lif file; FrameTime attribute sets
-%              AVI frame rate.  Omit or pass '' to default to fps = 1.
-
-if nargin < 3
-    lif_path = '';
-end
+%   pIn  - input TIFF directory (NoRMCorre-corrected)
+%   pOut - output directory; one *_results subfolder is created per file
+%
+%   Outputs per file: *_AQuA2.mat, *_Ch1.csv, curves/regions/risingMaps,
+%                     *_label_map.tif
+%   To generate AVI overlays from these results, run make_avi(pOut, fps).
 
 close all;
 
@@ -22,21 +19,7 @@ mkdir(pOut);
 
 batchSet.propMetric         = true;
 batchSet.networkFeatures    = true;
-batchSet.outputMovie        = true;
 batchSet.outputFeatureTable = true;
-
-% --- Read acquisition frame rate from LIF metadata ---
-if ~isempty(lif_path) && isfile(lif_path)
-    fps = readLifFps(lif_path);
-    fprintf('FPS from LIF: %.4f  (%.3f s/frame)\n', fps, 1/fps);
-else
-    fps = 1;
-    if ~isempty(lif_path)
-        fprintf('Warning: LIF file not found (%s); assuming fps=1\n', lif_path);
-    else
-        fprintf('No LIF file provided; assuming fps=1\n');
-    end
-end
 
 p_cell     = '';
 p_landmark = '';
@@ -153,40 +136,6 @@ for xxx = 1:numel(files)
                             opts, fpath, [fname_base, '_risingMaps']);
     end
 
-    if batchSet.outputMovie
-        ov1_img = plt.regionMapWithData(evt1, datOrg1, 0.5, datR1);
-        [H, W, ~, nFr] = size(ov1_img);
-        avi_path = fullfile(fpath, [name, '_AQuA2_Movie.avi']);
-        vw = VideoWriter(avi_path, 'Uncompressed AVI');
-        vw.FrameRate = fps;
-        open(vw);
-        try
-            fig = figure('Visible','off', 'Position',[0 0 W H], 'Color','k');
-            ax  = axes(fig, 'Position',[0 0 1 1], 'Units','normalized');
-            axis(ax, 'off');
-            ih  = imshow(ov1_img(:,:,:,1), 'Parent',ax, 'Border','tight');
-            th  = text(ax, 6, 14, '', ...
-                       'Color','w', 'FontSize',9, 'FontWeight','bold', ...
-                       'VerticalAlignment','top', 'Units','pixels', ...
-                       'BackgroundColor','k', 'Margin',1);
-            for fr = 1:nFr
-                set(ih, 'CData', ov1_img(:,:,:,fr));
-                set(th, 'String', sprintf('t = %5.1f s', (fr-1)/fps));
-                drawnow;
-                F = getframe(ax);
-                writeVideo(vw, imresize(F.cdata, [H W]));
-            end
-            close(fig);
-        catch ME
-            fprintf('  Warning: timestamp overlay skipped (%s)\n', ME.message);
-            for fr = 1:nFr
-                writeVideo(vw, ov1_img(:,:,:,fr));
-            end
-        end
-        close(vw);
-        fprintf('  Movie: %s\n', avi_path);
-    end
-
     % Label map: uint16 TIFF, pixel value = 1-based event index.
     % Open in Fiji with glasbey LUT; use Analyze > Analyze Particles to
     % overlay numeric labels via the ROI Manager.
@@ -209,37 +158,4 @@ for xxx = 1:numel(files)
 end
 
 fprintf('\nAQuA2 batch complete. Results in:\n  %s\n', pOut);
-end
-
-% -------------------------------------------------------------------------
-function fps = readLifFps(lif_path)
-% Read acquisition frame rate from a Leica LIF file's embedded XML header.
-    fid = fopen(lif_path, 'rb');
-    raw = fread(fid, 1e6, 'uint8=>uint8');
-    fclose(fid);
-
-    % Locate '<LMS' in UTF-16LE: bytes 3C 00 4C 00 4D 00 53 00
-    n   = numel(raw);
-    hit = raw(1:n-7)==0x3C & raw(2:n-6)==0x00 & raw(3:n-5)==0x4C & ...
-          raw(4:n-4)==0x00 & raw(5:n-3)==0x4D & raw(6:n-2)==0x00 & ...
-          raw(7:n-1)==0x53 & raw(8:n  )==0x00;
-    xs = find(hit, 1);
-    if isempty(xs)
-        fps = 1;
-        warning('readLifFps: XML marker not found in %s; defaulting to fps=1', lif_path);
-        return;
-    end
-
-    nbytes    = n - xs + 1;
-    nbytes    = nbytes - mod(nbytes, 2);
-    xml_bytes = raw(xs : xs + nbytes - 1);
-    xml_str   = native2unicode(xml_bytes', 'UTF-16LE');
-
-    tok = regexp(xml_str, 'FrameTime="([\d.E+\-]+)"', 'tokens', 'once');
-    if ~isempty(tok)
-        fps = 1 / str2double(tok{1});
-    else
-        fps = 1;
-        warning('readLifFps: FrameTime not found in %s; defaulting to fps=1', lif_path);
-    end
 end

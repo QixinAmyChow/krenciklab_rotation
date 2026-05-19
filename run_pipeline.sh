@@ -8,9 +8,10 @@
 # cancelled automatically.
 #
 # To re-run a single stage independently:
-#   sbatch run_normcorre.sh config_3.11.26.sh
-#   sbatch run_aqua2.sh     config_3.11.26.sh
-#   sbatch run_quantify.sh  config_3.11.26.sh
+#   sbatch run_normcorre.sh  config_3.11.26.sh
+#   sbatch run_aqua2.sh      config_3.11.26.sh
+#   sbatch run_quantify.sh   config_3.11.26.sh
+#   sbatch run_make_avi.sh   config_3.11.26.sh
 
 CONFIG="${1:?Usage: bash run_pipeline.sh <config_file>}"
 source "$CONFIG"
@@ -31,10 +32,16 @@ JID3=$(sbatch --parsable \
         --dependency=afterok:"$JID2" \
         "$DIR/run_quantify.sh" "$CONFIG")
 
+JID4=$(sbatch --parsable \
+        --job-name="make_avi_${EXP}" \
+        --dependency=afterok:"$JID2" \
+        "$DIR/run_make_avi.sh" "$CONFIG")
+
 echo "Submitted pipeline for experiment: $EXP"
 echo "  Stage 1 normcorre : job $JID1"
 echo "  Stage 2 aqua2     : job $JID2  (depends on $JID1)"
 echo "  Stage 3 quantify  : job $JID3  (depends on $JID2)"
+echo "  Stage 4 make_avi  : job $JID4  (depends on $JID2)"
 echo ""
-echo "Monitor:  squeue -j $JID1,$JID2,$JID3"
-echo "Cancel:   scancel $JID1 $JID2 $JID3"
+echo "Monitor:  squeue -j $JID1,$JID2,$JID3,$JID4"
+echo "Cancel:   scancel $JID1 $JID2 $JID3 $JID4"

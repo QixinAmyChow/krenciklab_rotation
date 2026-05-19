@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=61"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "aqua2kit"
@@ -17,6 +17,9 @@ dependencies = [
     "openpyxl",
     "python-pptx",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.scripts]
 aqua2kit = "aqua2kit.cli:main"

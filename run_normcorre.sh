@@ -12,5 +12,5 @@ module load matlab/R2024b
 cd "$ROOT"
 
 echo "=== NoRMCorre drift correction — $EXP ==="
-matlab -batch "addpath('$ROOT'); run_normcorre('$TIFF_IN/', '$TIFF_MC/')"
+matlab -batch "addpath('$ROOT/src'); run_normcorre('$TIFF_IN/', '$TIFF_MC/')"
 echo "=== Done ==="

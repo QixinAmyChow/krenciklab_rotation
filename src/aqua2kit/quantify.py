@@ -90,6 +90,9 @@ def condition_summary(summary_df, group_by="condition", metrics=None):
     if metrics is None:
         metrics = STANDARD_METRICS
 
+    if summary_df.empty or group_by not in summary_df.columns:
+        return pd.DataFrame()
+
     rows = []
     for cond, grp in summary_df.groupby(group_by):
         row = {

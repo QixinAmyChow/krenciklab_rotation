@@ -9,9 +9,7 @@ def cmd_lif2tif(args):
     from .lif_io import convert
     for lif in args.input:
         print(f"\n=== {lif} ===")
-        outputs = convert(lif, out_dir=args.outdir,
-                          skip_snapshots=not args.keep_snapshots,
-                          channel=args.channel)
+        outputs = convert(lif, out_dir=args.outdir, channel=args.channel)
         print(f"{len(outputs)} TIFFs written to {Path(outputs[0]).parent if outputs else args.outdir}")
 
 
@@ -31,7 +29,10 @@ def cmd_quantify(args):
     print(summary_df[cols].to_string(index=False))
 
     print("\n── Condition summary ───────────────────────────────────────────")
-    print(cond_df[["condition", "n_replicates", "n_events mean", "n_events sem"]].to_string(index=False))
+    if not cond_df.empty:
+        print(cond_df[["condition", "n_replicates", "n_events mean", "n_events sem"]].to_string(index=False))
+    else:
+        print("(no data)")
 
 
 def cmd_join_tif(args):
@@ -96,8 +97,6 @@ def main():
     p_lif.add_argument("input", nargs="+", help="LIF file path(s)")
     p_lif.add_argument("--outdir", "-o", default=None,
                        help="Output directory (default: 'tiff/' folder next to each LIF)")
-    p_lif.add_argument("--keep-snapshots", action="store_true",
-                       help="Include single-frame series (skipped by default)")
     p_lif.add_argument("--channel", type=int, default=0,
                        help="Channel index to extract (default: 0)")
     p_lif.set_defaults(func=cmd_lif2tif)

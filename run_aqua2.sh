@@ -12,5 +12,5 @@ module load matlab/R2024b
 cd "$ROOT"
 
 echo "=== AQuA2 event detection — $EXP ==="
-matlab -batch "addpath('$ROOT'); run_aqua2('$TIFF_MC/', '$RESULTS/', '$LIF')"
+matlab -batch "addpath('$ROOT/src'); run_aqua2('$TIFF_MC/', '$RESULTS/')"
 echo "=== Done ==="
