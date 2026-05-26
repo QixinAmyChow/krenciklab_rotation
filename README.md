@@ -107,7 +107,9 @@ src/
     ├── lif_io.py      LIF→TIFF conversion; read_fps() for frame rate
     ├── aqua2_io.py    Load AQuA2 .mat result files
     ├── quantify.py    Aggregate event counts and features
-    ├── plot.py        Figure helpers
+    ├── utils.py       Per-cell and per-event feature extraction (cell_peakcaller, event_features, …)
+    ├── plot.py        All figure helpers (peakcaller, ROI map, direction distribution, …)
+    ├── stamp.py       Burn timestamps into TIFF stacks
     └── cli.py         aqua2kit CLI entry point
 ```
 
@@ -115,6 +117,68 @@ Install the Python package once:
 ```bash
 pip install -e .
 ```
+
+---
+
+## aqua2kit CLI
+
+All commands accept `--help` for full argument reference.
+
+**Common arguments**: `mat` = path to `*_AQuA2.mat`; `label_map` = path to `*_label_map.tif`; `--atp-frame` = first frame of drug addition (0-based); `--fps` = true frame rate in Hz (88/120 ≈ 0.7333 for dual-channel LIF).
+
+### Cell-level Ca²⁺ analysis (PeakCaller pipeline)
+
+Replicates the Cvetkovic et al. 2022 / Bhatt et al. 2017 approach: per-cell mean fluorescence from `datOrg1` masked by `label_map.tif`, EMA 2-sided baseline detrending applied independently to pre- and post-ATP windows, then two-pass lookback/lookahead peak detection.
+
+| Command | Output | Description |
+|---|---|---|
+| `plot-cell-peakcaller` | `*_peakcaller.png` | Mean ± SEM peak frequency pre/post ATP, one dot per cell |
+| `plot-cell-peakcaller-fc` | `*_peakcaller_fc.png` | Fold change (post/pre) per cell; excludes cells with zero pre-ATP peaks |
+| `plot-cell-roi-map` | `*_roi_map.png` | Cell ROIs from `label_map.tif` overlaid on max projection, labeled by cell index |
+
+Key parameters for `plot-cell-peakcaller` / `plot-cell-peakcaller-fc`:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--ema-smoothness` | 40 | EMA window k — larger = slower baseline |
+| `--rise` | 0.10 | Required fractional rise above local minimum |
+| `--fall` | 0.10 | Required fractional fall after peak |
+| `--lookback-frames` | 5 | Frames to look back for rise detection |
+| `--lookahead-frames` | 8 | Frames to look ahead for fall detection |
+
+Recommended tighter params at 0.73 Hz (reduces noise peaks): `--ema-smoothness 20 --rise 0.25 --fall 0.25 --lookback-frames 15 --lookahead-frames 20`
+
+### Event-level analysis
+
+| Command | Output | Description |
+|---|---|---|
+| `event-features` | stdout | Table of per-event area, duration, propagation speed, direction, spatial location, pre/post phase |
+| `plot-event-direction` | `event_direction_distribution.png` | Stacked bar of Static/Anterior/Posterior/Left/Right counts per phase; accepts multiple mat files |
+| `plot-event-trajectories` | `*_trajectories.png` | Per-event centroids/paths on FOV, colored by propagation direction |
+| `plot-events-per-frame` | `*_events_per_frame.png` | Event onset count per frame with ATP marker |
+| `plot-event-rate` | `*_event_rate.png` | Bar plot of events/min pre vs post ATP |
+| `event-intervals` | stdout | Inter-event interval statistics |
+| `event-fft` | stdout + optional PNG | FFT dominant frequency per event |
+| `plot-dff` | `*_dff.png` | AQuA2 precomputed dF/F traces vs time |
+
+### Cell-level oscillation (scipy find_peaks, alternative to PeakCaller)
+
+| Command | Output | Description |
+|---|---|---|
+| `plot-cell-osc-freq` | `*_osc_freq.png` | Peak frequency pre/post ATP using scipy prominence-based detection |
+| `plot-cell-event-rates` | `*_cell_rates.png` | AQuA2 event rate per cell ROI pre/post ATP |
+| `cell-assign` | stdout | Assign each AQuA2 event to its best-matching cell ROI |
+
+### Utility
+
+| Command | Description |
+|---|---|
+| `inspect-mat` | Print full AQuA2 .mat contents with field descriptions |
+| `lif2tif` | Convert Leica `.lif` to per-series TIFFs |
+| `join-tif` | Concatenate TIFF stacks along the time axis |
+| `stamp-tiff` | Burn per-frame timestamps into a TIFF stack |
+| `quantify` | Aggregate event counts across samples → Excel summary |
+| `template` | Generate a `samples.json` template for `quantify` |
 
 ---
 

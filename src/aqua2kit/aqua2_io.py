@@ -152,6 +152,10 @@ def parse_mat(mat_path):
     with h5py.File(mat_path, "r") as f:
         fts = f["res/fts1"]
 
+        # AQuA2 omits feature datasets entirely when 0 events are detected.
+        if "basic/area" not in fts:
+            return data
+
         # ── basic ─────────────────────────────────────────────────────────
         data["Basic - Area"] = _vec(fts["basic/area"])
         data["Basic - Perimeter (only for 2D video)"] = _vec(fts["basic/peri"])
@@ -189,6 +193,41 @@ def parse_mat(mat_path):
         data["Network - maximum number of events appearing at the same time"] = _vec(fts["network/nOccurSameTime"])
 
     return data
+
+
+def prestim_dff(mat_path, atp_frame):
+    """Compute per-event dF/F using pre-stimulus mean as F0.
+
+    F0 = mean fluorescence of each event's spatial footprint over frames
+    [0, atp_frame).  Returns an (n_frames, n_events) float32 array.
+
+    Args:
+        mat_path:  Path to *_AQuA2.mat.
+        atp_frame: First frame of drug addition (0-based).
+    """
+    import h5py
+
+    with h5py.File(mat_path, "r") as f:
+        dat = f["res/datOrg1"][:, 0, :, :]   # (n_frames, H, W)  uint16
+        dat = dat.astype(np.float32)
+        n_frames, H, _ = dat.shape
+        n_events = f["res/fts1/loc/xSpa"].shape[0]
+
+        dff = np.zeros((n_frames, n_events), dtype=np.float32)
+
+        for i in range(n_events):
+            ref  = f["res/fts1/loc/xSpa"][i, 0]
+            # MATLAB linear indices: 1-based, column-major (rows vary fastest)
+            idx  = f[ref][:].astype(int).ravel() - 1
+            rows = idx % H
+            cols = idx // H
+
+            F    = dat[:, rows, cols].mean(axis=1)    # (n_frames,)
+            F0   = F[:atp_frame].mean()
+            if F0 > 0:
+                dff[:, i] = (F - F0) / F0
+
+    return dff
 
 
 def load_mat(mat_path):
